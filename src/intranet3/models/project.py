@@ -35,7 +35,6 @@ def unfuddle_bug_list(tracker_url, bug_ids, project_selector=None):
     query = '|'.join(['number-eq-%s' % bug_id for bug_id in bug_ids])
     return tracker_url + (suffix % (project_selector, query))
 
-
 class Project(Base):
     __tablename__ = 'project'
 
@@ -48,6 +47,7 @@ class Project(Base):
         'bitbucket': lambda *args: '#',
         'pivotaltracker': lambda *args: '#',
         'unfuddle': unfuddle_bug_list,
+        'github': lambda *args: '#'
     }
 
     id = Column(Integer, primary_key=True, index=True)

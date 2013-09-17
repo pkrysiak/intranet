@@ -1,6 +1,8 @@
 # coding: utf-8
 import json
 import re
+from functools import partial
+from intranet3 import memcache
 
 from intranet3.asyncfetchers import base
 from intranet3.helpers import Converter, serialize_url
@@ -30,6 +32,7 @@ class GithubBug(base.Bug):
     @property
     def severity(self):
         return self._severity
+
     @severity.setter
     def severity(self, value):
         labels = [l.get('name') for l in value]
@@ -52,6 +55,7 @@ class GithubBug(base.Bug):
     @property
     def component_name(self):
         return self._component_name
+
     @component_name.setter
     def component_name(self, value):
         m = re.match('(.*?)github.com/(.*?)/(.*?)($|/.*)', value)
@@ -60,6 +64,27 @@ class GithubBug(base.Bug):
         else:
             self._component_name = value
 
+    def get_status(self):
+        try:
+            label = self.label[0]['name']
+            if label == 'to do':
+                return 'NEW'
+            elif label == 'to verify':
+                return 'RESOLVED'
+            elif label == 'completed':
+                return 'CLOSED'
+        except IndexError:
+            return ''
+
+    def is_unassigned(self):
+        try:
+            label = self.label[0]['name']
+            if label == 'in process':
+                return False
+            else:
+                return True
+        except IndexError:
+            return True
 
 github_converter = Converter(
     id='number',
@@ -78,7 +103,8 @@ github_converter = Converter(
     opendate=lambda d: parse(d.get('created_at', '')),
     changeddate=lambda d: parse(d.get('updated_at', '')),
     dependson=lambda d: {},
-    blocked=lambda d: {}
+    blocked=lambda d: {},
+    label=lambda d: d['labels'] if d != [] else None # bierzemy nazwę pierwszej etykiety
 )
 
 
@@ -122,11 +148,15 @@ def _query_fetcher_function(resolved):
 class GithubFetcher(BasicAuthMixin, BaseFetcher):
     bug_class = GithubBug
     get_converter = lambda self: github_converter
-    
+
+    MILESTONES_KEY = 'milestones_map'
+    MILESTONES_TIMEOUT = 60*3
+    get_milestones = True
+    milestone_url = None
+
     def parse(self, data):
         converter = self.get_converter()
         json_data = json.loads(data)
-
         for bug_desc in json_data:
             # Filter bugs
             convertered_data = converter(bug_desc)
@@ -136,11 +166,56 @@ class GithubFetcher(BasicAuthMixin, BaseFetcher):
                     **convertered_data
                 )
 
+    def parse_milestones(self, milestones):
+        json_data = json.loads(milestones)
+        for milestone in json_data:
+            self.milestone_map[milestone['title']] = milestone['number']
+
+    def get_data(self, callback):
+        if self.get_milestones:
+            data = memcache.get(self.MILESTONES_KEY)
+            if not data:
+                self.fetch_data(callback)
+                return
+            else:
+                self.get_milestones = False
+        callback()
+
+    def fetch_data(self, callback):
+        headers = self.get_headers()
+        url = str(self.milestone_url)
+        self.request(
+            url,
+            headers,
+            partial(self.responded, on_success=partial(self.parse_data, callback)),
+        )
+
+    def parse_data(self, callback, data):
+        milestone_map = {}
+        json_data = json.loads(data)
+        for milestone in json_data:
+            milestone_map[milestone['title']] = str(milestone['number'])
+
+        memcache.set(
+            self.MILESTONES_KEY,
+            milestone_map,
+            timeout=self.MILESTONES_TIMEOUT
+        )
+        self.get_milestones = False
+        callback()
 
     def fetch(self, url):
-        headers = self.get_headers()
-        self.request(url, headers, self.responded)
-        
+        if self.get_milestones:
+            self_callback = partial(self.fetch, url)
+            self.get_data(self_callback)
+        else:
+            headers = self.get_headers()
+            self.request(
+                url,
+                headers,
+                partial(self.responded)
+            )
+
     def common_url_params(self):
         return dict(
             state='open',
@@ -166,6 +241,15 @@ class GithubFetcher(BasicAuthMixin, BaseFetcher):
     fetch_bugs_for_query = _query_fetcher_function(resolved=False)
     fetch_resolved_bugs_for_query = _query_fetcher_function(resolved=True)
 
+    def fetch_scrum(self, sprint_name, project_id=None, component_id=None):
+        base_url = '%srepos/%s/%s/' % (self.tracker.url, project_id, component_id)
+        self.milestone_url = base_url + 'milestones'
+        if self.get_milestones:
+            self.get_data(partial(self.fetch_scrum, sprint_name, project_id, component_id))
+        else:
+            scrum_url = base_url + 'issues?milestone=' + memcache.get(self.MILESTONES_KEY)[sprint_name]
+            self.fetch(scrum_url.encode('utf-8'))
+
     def received(self, data):
         """ Called when server returns whole response body """
         try:
@@ -173,7 +257,6 @@ class GithubFetcher(BasicAuthMixin, BaseFetcher):
             for bug in self.parse(data):
                 if has_wanted and bug.id not in self.wanted_ticket_ids:
                     continue # manually skip unwanted tickets
-
                 self.bugs[bug.number] = bug
         except BaseException as e:
             EXCEPTION(u"Could not parse tracker response")
