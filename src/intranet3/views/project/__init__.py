@@ -86,6 +86,8 @@ class Edit(BaseView):
             project.continuous_integration_url = form.continuous_integration_url.data
             project.backlog_url = form.backlog_url.data
             project.status = form.status.data
+            project.sprint_tabs = form.sprint_tabs.data
+
 
             self.flash(self._(u"Project saved"))
             LOG(u"Project saved")

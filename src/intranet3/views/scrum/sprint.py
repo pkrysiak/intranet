@@ -154,6 +154,7 @@ class Show(ClientProtectionMixin, FetchBugsMixin, BaseSprintView):
             tracker=tracker,
             bugs=sw.bugs,
             info=sw.get_info(),
+            sprint_tabs=sw.get_tabs()
         )
 
 
@@ -165,13 +166,13 @@ class Board(ClientProtectionMixin, FetchBugsMixin, BaseSprintView):
 
         sw = SprintWrapper(sprint, bugs, self.request)
         board = sw.get_board()
-
         return dict(
             board=board,
             info=sw.get_info(),
             bug_list_url=lambda bugs_list: sprint.project.get_bug_list_url(
                 [bug.id for bugs in bugs_list.values() for bug in bugs]
             ),
+            sprint_tabs=sw.get_tabs()
         )
 
 
@@ -229,6 +230,7 @@ class Times(ClientProtectionMixin, TimesReportMixin, FetchBugsMixin,
                 [time[1] for time in participation_of_workers]
             ),
             trackers_id=trackers_id, tickets_id=tickets_id,
+            sprint_tabs=sw.get_tabs()
         )
 
 @view_config(route_name='scrum_sprint_charts', permission='client')
@@ -250,6 +252,7 @@ class Charts(ClientProtectionMixin, FetchBugsMixin, BaseSprintView):
             charts_data=json.dumps(burndown),
             piechart_data=piechart_data,
             info=sw.get_info(),
+            sprint_tabs=sw.get_tabs()
         )
 
 
@@ -269,6 +272,7 @@ class Retros(ClientProtectionMixin, FetchBugsMixin, BaseSprintView):
             bugs=bugs,
             info=sw.get_info(),
             sprints=sprints,
+            sprint_tabs=sw.get_tabs()
         )
 
 

@@ -171,6 +171,15 @@
             });
         });
 
+        // sprint_tabs
+        var tab_list = $('a[id*="sprint_tab"]');
+        tab_list.click(function() {
+            var link = this.getAttribute('title');
+            $('.stats-container').remove();
+            $('.task_board').remove();
+            $('#right_column_content').append('<iframe src="' + link + '"></iframe>');
+        });
+
 
     });
 </script>

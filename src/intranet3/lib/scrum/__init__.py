@@ -6,7 +6,7 @@ from calendar import timegm
 from sqlalchemy import func
 from sqlalchemy.sql import or_, and_
 
-from intranet3.models import User, TimeEntry
+from intranet3.models import User, TimeEntry, Project
 from intranet3 import helpers as h
 
 
@@ -153,6 +153,10 @@ class SprintWrapper(object):
 
         entries = sorted([ (user.name, round(time)) for user, time in entries ], key=lambda x: x[1], reverse=True)
         return entries, sum([e[1] for e in entries])
+
+    def get_tabs(self):
+        tabs = self.session.query(Project).filter(Project.client_id == self.sprint.client_id).first().get_sprint_tabs
+        return tabs
 
     def get_board(self):
         todo = dict(bugs=dict(blocked=[], with_points=[], without_points=[]), points=0)

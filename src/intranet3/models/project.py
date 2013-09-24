@@ -79,7 +79,18 @@ class Project(Base):
     continuous_integration_url = Column(String, nullable=False, default='')
     backlog_url = Column(String, nullable=False, default='')
 
+    sprint_tabs = Column(Text, nullable=False, default='')
+
     __table_args__ = (UniqueConstraint('name', 'client_id', name='project_name_client_id_unique'), {})
+
+    @property
+    def get_sprint_tabs(self):
+        tabs = []
+        for item in self.sprint_tabs.split('\n'):
+            tab_name, tab_link = item.strip().split(':')
+            tab = (tab_name, tab_link)
+            tabs.append(tab)
+        return tabs
 
     def format_selector(self):
         if self.turn_off_selectors:

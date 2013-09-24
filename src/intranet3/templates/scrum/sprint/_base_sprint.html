@@ -55,6 +55,13 @@
             </li>
         {% endif %}
     {% endif %}
+
+    <!--sprint tabs-->
+    {% for tab_name, tab_link in sprint_tabs %}
+        <li><a class="custom_sprint_tab" data-url="{{ tab_link }}" href='#'>{{ tab_name }}</a></li>
+    {% endfor %}
+
+
 </ul>
 <div class="stats-container row-fluid">
     <div class="span12">
@@ -138,6 +145,28 @@
             </div>
         </div>
     </div>
+    // sprint_tabs
+    <script type="text/javascript">
+    $(document).ready(function() {
+        var custom_tab_list = $('a[class*="custom_sprint_tab"]');
+        custom_tab_list.click(function() {
+            var link = this.getAttribute('data-url');
+            var active_tabs = $('ul[id*="sprint-nav"]').find('.active');
+            var frame = '<iframe width="100%" height="500px" src="http://' + link + '"></iframe>';
+            active_tabs.find('a').attr('href', window.location.href);
+            active_tabs.removeAttr('class');
+            $(this).parent().attr('class','active');
+            if ($('iframe').length === 0){
+                $('.stats-container').remove();
+                $('.task_board').remove();
+                $('#right_column_content').append(frame);
+            }else{
+                $('#right_column_content').find('iframe').remove()
+                $('#right_column_content').append(frame);
+            };
+        });
+    });
+    </script>
 </div>
 
 {% block body %}
