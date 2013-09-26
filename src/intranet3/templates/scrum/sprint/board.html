@@ -153,25 +153,82 @@
                 $go_normalscreen_btn.hide()
             }
         });
+
+        function calculate_column_width(slots_number){
+            var current_card_width = $('.yellow_card').first().outerWidth();
+            if (slots_number <= 1){
+                return current_card_width + 2;
+            }else{
+                return ((slots_number * current_card_width) + ((1.63095* Math.pow(slots_number,2) - (1.27381*slots_number))+ 2.10714)).toFixed(0);
+            };
+        };
+
+        function calculate_all_slots(empty_columns){
+             var currentTableWidth = table.innerWidth() - empty_columns * 80;
+             var tmp = 0;
+             for (var i=14; i>0; i--){
+                 val = calculate_column_width(i);
+                 if (val < currentTableWidth){
+                     return i;
+                 };
+             };
+        };
+
         var amountYellowCard = $('.yellow_card',this).length;
-        $('.task_board tbody td').each(function () {
-            var currentAmountYellowCard = $('.yellow_card',this).length,
-                percent = currentAmountYellowCard * 100/amountYellowCard + '%';
-            $(this).css('width',percent);
-            $(this).css('min-width','206px');
-            var percentCard = 100/parseInt($(this).width()/87) - 4 + '%';
-            if (currentAmountYellowCard==0) {
-                $(this).css('min-width','70px');
+        function calculate_slots_for_column(aviliable_slots, column_cards_amount, round_direction){
+            if (round_direction == 1){
+                return Math.ceil(aviliable_slots * column_cards_amount/ amountYellowCard);
+            }else{
+                return Math.floor(aviliable_slots * column_cards_amount/ amountYellowCard);
             }
-            $('.yellow_card',this).each(function() {
-                $(this).css('width',percentCard);
-                if($(this).parent().hasClass('container_card_blocked')) {
-                    $(this).parent().css('width',percentCard);
-                }
-            });
+
+        };
+
+        function calculate_column_height(column_cards_number, column_slots_number){
+            return Math.ceil(column_cards_number/column_slots_number);
+        };
+
+        var freeColumns = 0
+        var table = $('.task_board tbody');
+        table.find('td').each(function () {
+            var currentAmountYellowCard = $('.yellow_card',this).length
+            if (currentAmountYellowCard==0) {
+                $(this).css('width','70px');
+                freeColumns++;
+            };
         });
 
+        function get_tallest(){
+            var tallest_column = 1;
+            var tmp = 0;
+            table.find('td').each(function(){
+                var curr_column = 1;
+                var currentAmountYellowCard = $('.yellow_card',this).length;
+                var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard);
+                var current_column_height = calculate_column_height(currentAmountYellowCard, column_slots);
+                if (current_column_height > tmp){
+                    tallest_column = curr_column;
+                    tmp = current_column_height;
+                };
+            });
+            return tallest_column;
+        };
 
+        var curr_column = 1;
+        var tallest = get_tallest();
+        table.find('td').each(function(){
+            var currentAmountYellowCard = $('.yellow_card',this).length;
+            if (curr_column == tallest){
+                var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard, 1);
+            }else{
+                var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard, 0);
+            };
+            var col_width = calculate_column_width(column_slots);
+            if (currentAmountYellowCard !=0){
+                $(this).css('width',col_width);
+            };
+            curr_column++;
+        });
     });
 </script>
 {% endblock body %}
