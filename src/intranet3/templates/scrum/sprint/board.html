@@ -207,7 +207,7 @@
                 var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard);
                 var current_column_height = calculate_column_height(currentAmountYellowCard, column_slots);
                 if (current_column_height > tmp){
-                    tallest_column = curr_column;
+                    tallest_column = current_column_height;
                     tmp = current_column_height;
                 };
             });
