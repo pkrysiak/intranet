@@ -160,75 +160,99 @@
                 return current_card_width + 2;
             }else{
                 return ((slots_number * current_card_width) + ((1.63095* Math.pow(slots_number,2) - (1.27381*slots_number))+ 2.10714)).toFixed(0);
-            };
-        };
+            }
+        }
 
+        var table = $('.task_board tbody');
+        var column = table.find('td');
         function calculate_all_slots(empty_columns){
-             var currentTableWidth = table.innerWidth() - empty_columns * 80;
-             var tmp = 0;
-             for (var i=14; i>0; i--){
-                 val = calculate_column_width(i);
+             var currentTableWidth = table.width() - empty_columns * 85;
+             for (var i=20; i>0; i--){
+                 var val = calculate_column_width(i);
                  if (val < currentTableWidth){
                      return i;
-                 };
-             };
-        };
+                 }
+             }
+        }
 
-        var amountYellowCard = $('.yellow_card',this).length;
+        var amountYellowCard = $('.yellow_card').length;
         function calculate_slots_for_column(aviliable_slots, column_cards_amount, round_direction){
             if (round_direction == 1){
                 return Math.ceil(aviliable_slots * column_cards_amount/ amountYellowCard);
             }else{
                 return Math.floor(aviliable_slots * column_cards_amount/ amountYellowCard);
             }
-
-        };
+        }
 
         function calculate_column_height(column_cards_number, column_slots_number){
             return Math.ceil(column_cards_number/column_slots_number);
-        };
+        }
 
-        var freeColumns = 0
-        var table = $('.task_board tbody');
-        table.find('td').each(function () {
-            var currentAmountYellowCard = $('.yellow_card',this).length
-            if (currentAmountYellowCard==0) {
-                $(this).css('width','70px');
-                freeColumns++;
-            };
-        });
+        function count_empty_slots(){
+            var freeColumns = 0;
+            column.each(function () {
+                var currentAmountYellowCard = $('.yellow_card',this).length;
+                if (currentAmountYellowCard==0) {
+                    $(this).css('width','70px');
+                    freeColumns++;
+                }
+            });
+            return freeColumns;
+        }
 
-        function get_tallest(){
+        function get_tallest_column(aviliable_slots){
             var tallest_column = 1;
             var tmp = 0;
-            table.find('td').each(function(){
-                var curr_column = 1;
+            var curr_column = 1;
+            column.each(function(){
                 var currentAmountYellowCard = $('.yellow_card',this).length;
-                var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard);
+                var column_slots = calculate_slots_for_column(aviliable_slots, currentAmountYellowCard);
                 var current_column_height = calculate_column_height(currentAmountYellowCard, column_slots);
                 if (current_column_height > tmp){
-                    tallest_column = current_column_height;
+                    tallest_column = curr_column;
                     tmp = current_column_height;
-                };
+                }
+                curr_column++;
             });
             return tallest_column;
-        };
+        }
 
-        var curr_column = 1;
-        var tallest = get_tallest();
-        table.find('td').each(function(){
-            var currentAmountYellowCard = $('.yellow_card',this).length;
-            if (curr_column == tallest){
-                var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard, 1);
-            }else{
-                var column_slots = calculate_slots_for_column(calculate_all_slots(freeColumns), currentAmountYellowCard, 0);
-            };
-            var col_width = calculate_column_width(column_slots);
-            if (currentAmountYellowCard !=0){
-                $(this).css('width',col_width);
-            };
-            curr_column++;
-        });
+        function arrange_table(){
+            var freeColumns = count_empty_slots();
+            var aviliable_slots = calculate_all_slots(freeColumns);
+            var tallest_column = get_tallest_column(aviliable_slots);
+
+            var curr_column = 1;
+            var disposed_slots = 0;
+            column.each(function(){
+                var currentAmountYellowCard = $('.yellow_card',this).length;
+                if (curr_column == tallest_column){
+                    var column_slots = calculate_slots_for_column(aviliable_slots, currentAmountYellowCard, 1);
+                }else{
+                    var column_slots = calculate_slots_for_column(aviliable_slots, currentAmountYellowCard, 0);
+                }
+                disposed_slots = disposed_slots + column_slots;
+                var col_width = calculate_column_width(column_slots);
+                if (currentAmountYellowCard !=0){
+                    $(this).css('width',col_width);
+                    $(this).attr('slots',column_slots);
+                }
+                curr_column++;
+            });
+            if (disposed_slots<aviliable_slots){
+                var tall = get_tallest_column(aviliable_slots);
+                var col = table.find('td')[tall];
+                var col_slots = parseInt(col.getAttribute('slots'))
+                $(col).css('width',calculate_column_width(col_slots + 1))
+                $(col).attr('slots',col_slots);
+            }
+        }
+        //RUN
+        arrange_table();
+        $( window ).resize(function() {
+            arrange_table();
+        })
+
     });
 </script>
 {% endblock body %}
